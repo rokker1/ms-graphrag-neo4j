@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "my_package"
+name = "ms_graphrag_neo4j"
 version = "0.1.0"
 description = "A simple Python package"
 readme = "README.md"
@@ -26,4 +26,4 @@ dependencies = [
 "Bug Tracker" = "https://github.com/yourusername/my_package/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/my_package"]
+packages = ["src/ms_graphrag_neo4j"]
