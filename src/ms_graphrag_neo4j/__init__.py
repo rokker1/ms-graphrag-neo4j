@@ -1,3 +1,3 @@
-from .core import MyObject
+from ms_graphrag_neo4j.ms_graphrag import MsGraphRAG
 
-__all__ = ["MyObject"]
+__all__ = ["MsGraphRAG"]
