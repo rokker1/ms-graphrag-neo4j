@@ -2,6 +2,8 @@ import os
 from typing import Any, Dict, List, Optional, Type
 from neo4j import Driver
 from openai import AsyncOpenAI
+import asyncio
+
 
 from tqdm.asyncio import tqdm, tqdm_asyncio
 
@@ -66,6 +68,7 @@ class MsGraphRAG:
         driver: Driver,
         model: str = "gpt-4o",
         database: str = "neo4j",
+        max_workers: int = 10,
     ) -> None:
         """
         Initialize MsGraphRAG with Neo4j driver and LLM.
@@ -82,6 +85,7 @@ class MsGraphRAG:
 
         self._driver = driver
         self.model = model
+        self.max_workers = max_workers
         self._database = database
         self._openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         # Test for APOC
@@ -133,15 +137,31 @@ class MsGraphRAG:
         tasks = [process_text(text) for text in input_texts]
 
         # Process tasks with tqdm progress bar
-        result = []
-        for task in tqdm.as_completed(
-            tasks, total=len(tasks), desc="Extracting nodes & relationships"
-        ):
-            result.append(await task)
+        # Use semaphore to limit concurrent tasks if max_workers is specified
+        if self.max_workers:
+            semaphore = asyncio.Semaphore(self.max_workers)
+            
+            async def process_with_semaphore(task):
+                async with semaphore:
+                    return await task
+                    
+            results = []
+            for task in tqdm.as_completed(
+                [process_with_semaphore(task) for task in tasks], 
+                total=len(tasks), 
+                desc="Extracting nodes & relationships"
+            ):
+                results.append(await task)
+        else:
+            results = []
+            for task in tqdm.as_completed(
+                tasks, total=len(tasks), desc="Extracting nodes & relationships"
+            ):
+                results.append(await task)
 
         total_relationships = 0
         # Import nodes and relationships
-        for text, output in zip(input_texts, result):
+        for text, output in zip(input_texts, results):
             nodes, relationships = output
             total_relationships += len(relationships)
             # Import nodes
@@ -156,15 +176,15 @@ class MsGraphRAG:
 
     async def summarize_nodes_and_rels(self) -> str:
         """
-    Generate summaries for all nodes and relationships in the graph.
+        Generate summaries for all nodes and relationships in the graph.
 
-    Returns:
-        str: Success message indicating completion of summarization
+        Returns:
+            str: Success message indicating completion of summarization
 
-    Notes:
-        - Retrieves candidate nodes and relationships from Neo4j
-        - Uses LLM to generate concise summaries for each entity and relationship
-        - Stores summarized properties in the graph
+        Notes:
+            - Retrieves candidate nodes and relationships from Neo4j
+            - Uses LLM to generate concise summaries for each entity and relationship
+            - Stores summarized properties in the graph
         """
         # Summarize nodes
         nodes = self.query(candidate_nodes_summarization)
@@ -182,10 +202,23 @@ class MsGraphRAG:
             summary = await self.achat(messages, model=self.model)
             return {"entity": node["entity_name"], "summary": summary.content}
 
-        # Create a progress bar for node processing
-        summaries = await tqdm_asyncio.gather(
-            *[process_node(node) for node in nodes], desc="Summarizing nodes"
-        )
+        # Create a progress bar for node processing with max_workers limit
+        if self.max_workers:
+            semaphore = asyncio.Semaphore(self.max_workers)
+            
+            async def process_with_semaphore(node):
+                async with semaphore:
+                    return await process_node(node)
+                    
+            summaries = await tqdm_asyncio.gather(
+                *[process_with_semaphore(node) for node in nodes], 
+                desc="Summarizing nodes"
+            )
+        else:
+            summaries = await tqdm_asyncio.gather(
+                *[process_node(node) for node in nodes], 
+                desc="Summarizing nodes"
+            )
 
         # Summarize relationships
         rels = self.query(candidate_rels_summarization)
@@ -208,10 +241,23 @@ class MsGraphRAG:
                 "summary": summary.content,
             }
 
-        # Create a progress bar for relationship processing
-        rel_summaries = await tqdm_asyncio.gather(
-            *[process_rel(rel) for rel in rels], desc="Summarizing relationships"
-        )
+        # Create a progress bar for relationship processing with max_workers limit
+        if self.max_workers:
+            semaphore = asyncio.Semaphore(self.max_workers)
+            
+            async def process_rel_with_semaphore(rel):
+                async with semaphore:
+                    return await process_rel(rel)
+                    
+            rel_summaries = await tqdm_asyncio.gather(
+                *[process_rel_with_semaphore(rel) for rel in rels], 
+                desc="Summarizing relationships"
+            )
+        else:
+            rel_summaries = await tqdm_asyncio.gather(
+                *[process_rel(rel) for rel in rels], 
+                desc="Summarizing relationships"
+            )
 
         # Import nodes
         self.query(import_entity_summary, params={"data": summaries})
@@ -225,20 +271,20 @@ class MsGraphRAG:
 
     async def summarize_communities(self, summarize_all_levels: bool = False) -> str:
         """
-    Detect and summarize communities within the graph using the Leiden algorithm.
+        Detect and summarize communities within the graph using the Leiden algorithm.
 
-    Args:
-        summarize_all_levels (bool, optional): Whether to summarize all community levels
-            or just the final level. Defaults to False.
+        Args:
+            summarize_all_levels (bool, optional): Whether to summarize all community levels
+                or just the final level. Defaults to False.
 
-    Returns:
-        str: Success message with count of generated community summaries
+        Returns:
+            str: Success message with count of generated community summaries
 
-    Notes:
-        - Uses Neo4j GDS library to run Leiden community detection algorithm
-        - Generates hierarchical community structures in the graph
-        - Uses LLM to create descriptive summaries of each community
-        - The community summaries include key entities, relationships, and themes
+        Notes:
+            - Uses Neo4j GDS library to run Leiden community detection algorithm
+            - Generates hierarchical community structures in the graph
+            - Uses LLM to create descriptive summaries of each community
+            - The community summaries include key entities, relationships, and themes
         """
         # Calculate communities
         self.query(drop_gds_graph_query)
@@ -278,12 +324,25 @@ class MsGraphRAG:
                 "communityId": community["communityId"],
             }
 
-        # Process all communities concurrently with tqdm progress bar
-        community_summary = await tqdm_asyncio.gather(
-            *(process_community(community) for community in communities),
-            desc="Summarizing communities",
-            total=len(communities),
-        )
+        # Process all communities concurrently with tqdm progress bar and max_workers limit
+        if self.max_workers:
+            semaphore = asyncio.Semaphore(self.max_workers)
+            
+            async def process_community_with_semaphore(community):
+                async with semaphore:
+                    return await process_community(community)
+                    
+            community_summary = await tqdm_asyncio.gather(
+                *(process_community_with_semaphore(community) for community in communities),
+                desc="Summarizing communities",
+                total=len(communities),
+            )
+        else:
+            community_summary = await tqdm_asyncio.gather(
+                *(process_community(community) for community in communities),
+                desc="Summarizing communities",
+                total=len(communities),
+            )
 
         self.query(import_community_summary, params={"data": community_summary})
         return f"Generated {len(community_summary)} community summaries"
