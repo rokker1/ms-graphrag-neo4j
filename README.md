@@ -14,6 +14,9 @@ MsGraphRAG-Neo4j is a Python library that implements Microsoft's GraphRAG method
 
 The implementation uses OpenAI's models for text processing and Neo4j's powerful graph capabilities including the Graph Data Science (GDS) library.
 
+> **⚠️ IMPORTANT NOTE**: This repository is experimental and provided as-is. The current implementation lacks optimizations for larger graphs, which may lead to exceptions or performance issues when processing substantial amounts of data. Use with caution in production environments and consider implementing additional error handling and optimization for large-scale deployments.
+
+
 ## Features
 
 - **Entity and Relationship Extraction**: Extract structured information from unstructured text using LLMs
