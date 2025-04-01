@@ -13,8 +13,52 @@ from ms_graphrag_neo4j.prompts import *
 
 class MsGraphRAG:
     """
-    A class for handling RAG (Retrieval-Augmented Generation) operations
-    with Microsoft Graph data stored in Neo4j.
+    MsGraphRAG: Microsoft GraphRAG Implementation for Neo4j
+    
+    A class for implementing the Microsoft GraphRAG approach with Neo4j graph database.
+    GraphRAG enhances retrieval-augmented generation by leveraging graph structures
+    to provide context-aware information for LLM responses.
+    
+    This implementation features:
+    - Entity and relationship extraction from unstructured text
+    - Node and relationship summarization for improved retrieval
+    - Community detection and summarization for concept clustering
+    - Integration with OpenAI models for generation
+    
+    The class connects to Neo4j for graph storage and uses OpenAI for content generation
+    and extraction, providing a seamless way to build knowledge graphs from text
+    and perform graph-based retrieval.
+    
+    Requirements:
+    - Neo4j database with APOC and GDS plugins installed
+    - OpenAI API key for LLM interactions
+    
+    Example:
+    ```
+    from ms_graphrag_neo4j import MsGraphRAG
+    import os
+    
+    os.environ["OPENAI_API_KEY"]= "sk-proj-"
+    os.environ["NEO4J_URI"]="bolt://localhost:7687"
+    os.environ["NEO4J_USERNAME"]="neo4j"
+    os.environ["NEO4J_PASSWORD"]="password"
+    
+    from neo4j import GraphDatabase
+    driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]))
+    ms_graph = MsGraphRAG(driver=driver, model='gpt-4o')
+    
+    example_texts = ["Tomaz works for Neo4j", "Tomaz lives in Grosuplje", "Tomaz went to school in Grosuplje"]
+    allowed_entities = ["Person", "Organization", "Location"]
+    
+    await ms_graph.extract_nodes_and_rels(example_texts, allowed_entities)
+    
+    await ms_graph.summarize_nodes_and_rels()
+    
+    await ms_graph.summarize_communities()
+    ```
+    
+    References:
+    - Microsoft GraphRAG: https://github.com/microsoft/graphrag
     """
 
     def __init__(
@@ -54,6 +98,21 @@ class MsGraphRAG:
     async def extract_nodes_and_rels(
         self, input_texts: list, allowed_entities: list
     ) -> str:
+        """
+        Extract nodes and relationships from input texts using LLM and store them in Neo4j.
+
+        Args:
+            input_texts (list): List of text documents to process and extract entities from
+            allowed_entities (list): List of entity types to extract from the texts
+
+        Returns:
+            str: Success message with count of extracted relationships
+
+        Notes:
+            - Uses parallel processing with tqdm progress tracking
+            - Extracted entities and relationships are stored directly in Neo4j
+            - Each text document is processed independently by the LLM
+        """
         async def process_text(input_text):
             prompt = GRAPH_EXTRACTION_PROMPT.format(
                 entity_types=allowed_entities,
@@ -96,6 +155,17 @@ class MsGraphRAG:
         return f"Successfuly extracted and imported {total_relationships} relationships"
 
     async def summarize_nodes_and_rels(self) -> str:
+        """
+    Generate summaries for all nodes and relationships in the graph.
+
+    Returns:
+        str: Success message indicating completion of summarization
+
+    Notes:
+        - Retrieves candidate nodes and relationships from Neo4j
+        - Uses LLM to generate concise summaries for each entity and relationship
+        - Stores summarized properties in the graph
+        """
         # Summarize nodes
         nodes = self.query(candidate_nodes_summarization)
 
@@ -154,6 +224,22 @@ class MsGraphRAG:
         return "Successfuly summarized nodes and relationships"
 
     async def summarize_communities(self, summarize_all_levels: bool = False) -> str:
+        """
+    Detect and summarize communities within the graph using the Leiden algorithm.
+
+    Args:
+        summarize_all_levels (bool, optional): Whether to summarize all community levels
+            or just the final level. Defaults to False.
+
+    Returns:
+        str: Success message with count of generated community summaries
+
+    Notes:
+        - Uses Neo4j GDS library to run Leiden community detection algorithm
+        - Generates hierarchical community structures in the graph
+        - Uses LLM to create descriptive summaries of each community
+        - The community summaries include key entities, relationships, and themes
+        """
         # Calculate communities
         self.query(drop_gds_graph_query)
         self.query(create_gds_graph_query)
