@@ -16,49 +16,49 @@ from ms_graphrag_neo4j.prompts import *
 class MsGraphRAG:
     """
     MsGraphRAG: Microsoft GraphRAG Implementation for Neo4j
-    
+
     A class for implementing the Microsoft GraphRAG approach with Neo4j graph database.
     GraphRAG enhances retrieval-augmented generation by leveraging graph structures
     to provide context-aware information for LLM responses.
-    
+
     This implementation features:
     - Entity and relationship extraction from unstructured text
     - Node and relationship summarization for improved retrieval
     - Community detection and summarization for concept clustering
     - Integration with OpenAI models for generation
-    
+
     The class connects to Neo4j for graph storage and uses OpenAI for content generation
     and extraction, providing a seamless way to build knowledge graphs from text
     and perform graph-based retrieval.
-    
+
     Requirements:
     - Neo4j database with APOC and GDS plugins installed
     - OpenAI API key for LLM interactions
-    
+
     Example:
     ```
     from ms_graphrag_neo4j import MsGraphRAG
     import os
-    
+
     os.environ["OPENAI_API_KEY"]= "sk-proj-"
     os.environ["NEO4J_URI"]="bolt://localhost:7687"
     os.environ["NEO4J_USERNAME"]="neo4j"
     os.environ["NEO4J_PASSWORD"]="password"
-    
+
     from neo4j import GraphDatabase
     driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]))
     ms_graph = MsGraphRAG(driver=driver, model='gpt-4o')
-    
+
     example_texts = ["Tomaz works for Neo4j", "Tomaz lives in Grosuplje", "Tomaz went to school in Grosuplje"]
     allowed_entities = ["Person", "Organization", "Location"]
-    
+
     await ms_graph.extract_nodes_and_rels(example_texts, allowed_entities)
-    
+
     await ms_graph.summarize_nodes_and_rels()
-    
+
     await ms_graph.summarize_communities()
     ```
-    
+
     References:
     - Microsoft GraphRAG: https://github.com/microsoft/graphrag
     """
@@ -69,14 +69,17 @@ class MsGraphRAG:
         model: str = "gpt-4o",
         database: str = "neo4j",
         max_workers: int = 10,
+        create_constraints: bool = True,
     ) -> None:
         """
         Initialize MsGraphRAG with Neo4j driver and LLM.
 
         Args:
             driver (Driver): Neo4j driver instance
-            llm (Any): Language model for generation
+            model (str, optional): The language model to use. Defaults to "gpt-4o".
             database (str, optional): Neo4j database name. Defaults to "neo4j".
+            max_workers (int, optional): Maximum number of concurrent workers. Defaults to 10.
+            create_constraints (bool, optional): Whether to create database constraints. Defaults to True.
         """
         if not os.environ.get("OPENAI_API_KEY"):
             raise ValueError(
@@ -98,6 +101,16 @@ class MsGraphRAG:
             self.query("CALL gds.list('test')")
         except:
             raise ValueError("You need to install and allow GDS functions")
+        if create_constraints:
+            self.query(
+                "CREATE CONSTRAINT IF NOT EXISTS FOR (e:__Chunk__) REQUIRE e.id IS UNIQUE;"
+            )
+            self.query(
+                "CREATE CONSTRAINT IF NOT EXISTS FOR (e:__Entity__) REQUIRE e.name IS UNIQUE;"
+            )
+            self.query(
+                "CREATE CONSTRAINT IF NOT EXISTS FOR (e:__Community__) REQUIRE e.id IS UNIQUE;"
+            )
 
     async def extract_nodes_and_rels(
         self, input_texts: list, allowed_entities: list
@@ -117,6 +130,7 @@ class MsGraphRAG:
             - Extracted entities and relationships are stored directly in Neo4j
             - Each text document is processed independently by the LLM
         """
+
         async def process_text(input_text):
             prompt = GRAPH_EXTRACTION_PROMPT.format(
                 entity_types=allowed_entities,
@@ -140,16 +154,16 @@ class MsGraphRAG:
         # Use semaphore to limit concurrent tasks if max_workers is specified
         if self.max_workers:
             semaphore = asyncio.Semaphore(self.max_workers)
-            
+
             async def process_with_semaphore(task):
                 async with semaphore:
                     return await task
-                    
+
             results = []
             for task in tqdm.as_completed(
-                [process_with_semaphore(task) for task in tasks], 
-                total=len(tasks), 
-                desc="Extracting nodes & relationships"
+                [process_with_semaphore(task) for task in tasks],
+                total=len(tasks),
+                desc="Extracting nodes & relationships",
             ):
                 results.append(await task)
         else:
@@ -205,19 +219,18 @@ class MsGraphRAG:
         # Create a progress bar for node processing with max_workers limit
         if self.max_workers:
             semaphore = asyncio.Semaphore(self.max_workers)
-            
+
             async def process_with_semaphore(node):
                 async with semaphore:
                     return await process_node(node)
-                    
+
             summaries = await tqdm_asyncio.gather(
-                *[process_with_semaphore(node) for node in nodes], 
-                desc="Summarizing nodes"
+                *[process_with_semaphore(node) for node in nodes],
+                desc="Summarizing nodes",
             )
         else:
             summaries = await tqdm_asyncio.gather(
-                *[process_node(node) for node in nodes], 
-                desc="Summarizing nodes"
+                *[process_node(node) for node in nodes], desc="Summarizing nodes"
             )
 
         # Summarize relationships
@@ -244,19 +257,18 @@ class MsGraphRAG:
         # Create a progress bar for relationship processing with max_workers limit
         if self.max_workers:
             semaphore = asyncio.Semaphore(self.max_workers)
-            
+
             async def process_rel_with_semaphore(rel):
                 async with semaphore:
                     return await process_rel(rel)
-                    
+
             rel_summaries = await tqdm_asyncio.gather(
-                *[process_rel_with_semaphore(rel) for rel in rels], 
-                desc="Summarizing relationships"
+                *[process_rel_with_semaphore(rel) for rel in rels],
+                desc="Summarizing relationships",
             )
         else:
             rel_summaries = await tqdm_asyncio.gather(
-                *[process_rel(rel) for rel in rels], 
-                desc="Summarizing relationships"
+                *[process_rel(rel) for rel in rels], desc="Summarizing relationships"
             )
 
         # Import nodes
@@ -327,13 +339,16 @@ class MsGraphRAG:
         # Process all communities concurrently with tqdm progress bar and max_workers limit
         if self.max_workers:
             semaphore = asyncio.Semaphore(self.max_workers)
-            
+
             async def process_community_with_semaphore(community):
                 async with semaphore:
                     return await process_community(community)
-                    
+
             community_summary = await tqdm_asyncio.gather(
-                *(process_community_with_semaphore(community) for community in communities),
+                *(
+                    process_community_with_semaphore(community)
+                    for community in communities
+                ),
                 desc="Summarizing communities",
                 total=len(communities),
             )
