@@ -3,7 +3,7 @@
 A Neo4j implementation of Microsoft's GraphRAG approach for knowledge graph-based retrieval augmented generation based on QFS.
 Query-focused summarization (QFS) is a summarization task where the objective is to produce a concise and relevant summary of a given document or set of documents specifically tailored to answer or address a particular query or question provided by a user.
 
-Learn more about GraphRAG[https://graphrag.com/].
+Learn more about [GraphRAG](https://graphrag.com/).
 
 ## Overview
 
