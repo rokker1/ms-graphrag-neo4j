@@ -1,5 +1,6 @@
 GRAPH_EXTRACTION_PROMPT = """-Goal-
 Given a text document that is potentially relevant to this activity and a list of entity types, identify all entities of those types from the text and all relationships among the identified entities.
+All responses must be in the same language as the input text.
 
 -Steps-
 1. Identify all entities. For each identified entity, extract the following information:
@@ -16,7 +17,7 @@ For each pair of related entities, extract the following information:
 - relationship_strength: a numeric score indicating strength of the relationship between the source entity and target entity
  Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
 
-3. Return output in English as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
+3. Return output in the same language as the input text as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
 
 4. When finished, output {completion_delimiter}
 
@@ -121,6 +122,7 @@ Output:"""
 
 SUMMARIZE_PROMPT = """
 You are a helpful assistant responsible for generating a comprehensive summary of the data provided below.
+Your summary must be written in the same language as the provided descriptions.
 Given one or two entities, and a list of descriptions, all related to the same entity or group of entities.
 Please concatenate all of these into a single, comprehensive description. Make sure to include information collected from all the descriptions.
 If the provided descriptions are contradictory, please resolve the contradictions and provide a single, coherent summary.
@@ -136,6 +138,7 @@ Output:
 
 COMMUNITY_REPORT_PROMPT = """
 You are an AI assistant that helps a human analyst to perform general information discovery. Information discovery is the process of identifying and assessing relevant information associated with certain entities (e.g., organizations and individuals) within a network.
+Your report must be written in the same language as the input text.
 
 # Goal
 Write a comprehensive report of a community, given a list of entities that belong to the community as well as their relationships and optional associated claims. The report will be used to inform decision-makers about information associated with the community and their potential impact. The content of this report includes an overview of the community's key entities, their legal compliance, technical capabilities, reputation, and noteworthy claims.
@@ -288,6 +291,7 @@ You are a helpful assistant responding to questions about data in the tables pro
 
 
 ---Goal---
+Respond in the same language as the user's question.
 
 Generate a response consisting of a list of key points that responds to the user's question, summarizing all relevant information in the input data tables.
 
@@ -366,6 +370,7 @@ You are a helpful assistant responding to questions about a dataset by synthesiz
 
 
 ---Goal---
+Respond in the same language as the user's question.
 
 Generate a response of the target length and format that responds to the user's question, summarize all the reports from multiple analysts who focused on different parts of the dataset.
 
@@ -441,6 +446,7 @@ You are a helpful assistant responding to questions about data in the tables pro
 
 
 ---Goal---
+Respond in the same language as the user's question.
 
 Generate a response of the target length and format that responds to the user's question, summarizing all information in the input data tables appropriate for the response length and format, and incorporating any relevant general knowledge.
 
@@ -506,6 +512,7 @@ You are a helpful assistant responding to questions about data in the tables pro
 
 
 ---Goal---
+Respond in the same language as the user's question.
 
 Generate a response consisting of a list of key points that responds to the user's question, summarizing all relevant information in the input data tables.
 
@@ -584,6 +591,7 @@ You are a helpful assistant responding to questions about a dataset by synthesiz
 
 
 ---Goal---
+Respond in the same language as the user's question.
 
 Generate a response of the target length and format that responds to the user's question, summarize all the reports from multiple analysts who focused on different parts of the dataset.
 
