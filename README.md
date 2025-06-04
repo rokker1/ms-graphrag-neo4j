@@ -63,6 +63,10 @@ driver = GraphDatabase.driver(
 # Initialize MsGraphRAG
 ms_graph = MsGraphRAG(driver=driver)
 
+# The PROMPT_LANGUAGE environment variable controls the language of all prompts
+# (defaults to "Russian" if not set)
+
+
 # Define example texts and entity types
 example_texts = [
     "Филипп Иванов Кашин арендует участки возле села Райбуже",
@@ -104,6 +108,9 @@ Create a `.env` file with the required credentials, for example:
 OPENAI_BASE_URL=http://your-openai-endpoint/v1
 OPENAI_API_KEY=your_openai_key
 CHAT_MODEL_NAME=qwen2:72b
+
+PROMPT_LANGUAGE=Russian
+
 NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=your_password

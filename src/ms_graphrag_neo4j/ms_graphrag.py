@@ -160,6 +160,7 @@ class MsGraphRAG:
                 tuple_delimiter=";",
                 record_delimiter="|",
                 completion_delimiter="\n\n",
+                language=PROMPT_LANGUAGE,
             )
             messages = [
                 {"role": "user", "content": prompt},
@@ -232,6 +233,7 @@ class MsGraphRAG:
                     "content": SUMMARIZE_PROMPT.format(
                         entity_name=node["entity_name"],
                         description_list=node["description_list"],
+                        language=PROMPT_LANGUAGE,
                     ),
                 },
             ]
@@ -266,6 +268,7 @@ class MsGraphRAG:
                     "content": SUMMARIZE_PROMPT.format(
                         entity_name=entity_name,
                         description_list=rel["description_list"],
+                        language=PROMPT_LANGUAGE,
                     ),
                 },
             ]
@@ -349,7 +352,10 @@ class MsGraphRAG:
             messages = [
                 {
                     "role": "user",
-                    "content": COMMUNITY_REPORT_PROMPT.format(input_text=input_text),
+                    "content": COMMUNITY_REPORT_PROMPT.format(
+                        input_text=input_text,
+                        language=PROMPT_LANGUAGE,
+                    ),
                 },
             ]
             summary = await self.achat(messages, model=self.model)
