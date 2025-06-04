@@ -39,18 +39,35 @@ class MsGraphRAG:
     ```
     from ms_graphrag_neo4j import MsGraphRAG
     import os
+    from dotenv import load_dotenv
 
-    os.environ["OPENAI_API_KEY"]= "sk-proj-"
-    os.environ["NEO4J_URI"]="bolt://localhost:7687"
-    os.environ["NEO4J_USERNAME"]="neo4j"
-    os.environ["NEO4J_PASSWORD"]="password"
+    # Load credentials from .env
+    load_dotenv()
 
     from neo4j import GraphDatabase
-    driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]))
-    ms_graph = MsGraphRAG(driver=driver, model='gpt-4o')
+    driver = GraphDatabase.driver(
+        os.environ["NEO4J_URI"],
+        auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
+    )
+    ms_graph = MsGraphRAG(driver=driver)
 
-    example_texts = ["Tomaz works for Neo4j", "Tomaz lives in Grosuplje", "Tomaz went to school in Grosuplje"]
-    allowed_entities = ["Person", "Organization", "Location"]
+    example_texts = [
+        "Филипп Иванов Кашин арендует участки возле села Райбуже",
+        "Сын Фёдор служит старшим механиком на заводе",
+        "Алёшка женился на Варваре из бедной семьи",
+    ]
+    allowed_entities = [
+        "Person",
+        "Location",
+        "Item",
+        "Property",
+        "Meaning",
+        "Thought",
+        "Object",
+        "Subject",
+        "Event",
+        "WorkOfArt",
+    ]
 
     await ms_graph.extract_nodes_and_rels(example_texts, allowed_entities)
 
@@ -66,7 +83,7 @@ class MsGraphRAG:
     def __init__(
         self,
         driver: Driver,
-        model: str = "gpt-4o",
+        model: Optional[str] = None,
         database: str = "neo4j",
         max_workers: int = 10,
         create_constraints: bool = True,
@@ -76,7 +93,9 @@ class MsGraphRAG:
 
         Args:
             driver (Driver): Neo4j driver instance
-            model (str, optional): The language model to use. Defaults to "gpt-4o".
+            model (str, optional): The language model to use. If not provided,
+                the value from the `CHAT_MODEL_NAME` environment variable is
+                used, falling back to "gpt-4o".
             database (str, optional): Neo4j database name. Defaults to "neo4j".
             max_workers (int, optional): Maximum number of concurrent workers. Defaults to 10.
             create_constraints (bool, optional): Whether to create database constraints. Defaults to True.
@@ -87,10 +106,13 @@ class MsGraphRAG:
             )
 
         self._driver = driver
-        self.model = model
+        self.model = model or os.environ.get("CHAT_MODEL_NAME", "gpt-4o")
         self.max_workers = max_workers
         self._database = database
-        self._openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        self._openai_client = AsyncOpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            base_url=os.environ.get("OPENAI_BASE_URL"),
+        )
         # Test for APOC
         try:
             self.query("CALL apoc.help('test')")
@@ -138,6 +160,7 @@ class MsGraphRAG:
                 tuple_delimiter=";",
                 record_delimiter="|",
                 completion_delimiter="\n\n",
+                language=PROMPT_LANGUAGE,
             )
             messages = [
                 {"role": "user", "content": prompt},
@@ -210,6 +233,7 @@ class MsGraphRAG:
                     "content": SUMMARIZE_PROMPT.format(
                         entity_name=node["entity_name"],
                         description_list=node["description_list"],
+                        language=PROMPT_LANGUAGE,
                     ),
                 },
             ]
@@ -244,6 +268,7 @@ class MsGraphRAG:
                     "content": SUMMARIZE_PROMPT.format(
                         entity_name=entity_name,
                         description_list=rel["description_list"],
+                        language=PROMPT_LANGUAGE,
                     ),
                 },
             ]
@@ -327,7 +352,10 @@ class MsGraphRAG:
             messages = [
                 {
                     "role": "user",
-                    "content": COMMUNITY_REPORT_PROMPT.format(input_text=input_text),
+                    "content": COMMUNITY_REPORT_PROMPT.format(
+                        input_text=input_text,
+                        language=PROMPT_LANGUAGE,
+                    ),
                 },
             ]
             summary = await self.achat(messages, model=self.model)
@@ -434,7 +462,8 @@ class MsGraphRAG:
             result = session.run(Query(text=query, timeout=self.timeout), params)
             return [r.data() for r in result]
 
-    async def achat(self, messages, model="gpt-4o", temperature=0, config={}):
+    async def achat(self, messages, model: Optional[str] = None, temperature=0, config={}):
+        model = model or self.model
         response = await self._openai_client.chat.completions.create(
             model=model,
             temperature=temperature,
