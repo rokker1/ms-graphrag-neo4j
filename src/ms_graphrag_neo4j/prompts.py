@@ -4,7 +4,9 @@ PROMPT_LANGUAGE = os.environ.get("PROMPT_LANGUAGE", "Russian")
 
 GRAPH_EXTRACTION_PROMPT = """-Goal-
 Given a text document that is potentially relevant to this activity and a list of entity types, identify all entities of those types from the text and all relationships among the identified entities.
+
 All responses must be in {language}.
+
 
 -Steps-
 1. Identify all entities. For each identified entity, extract the following information:
@@ -126,6 +128,7 @@ Output:"""
 
 SUMMARIZE_PROMPT = """
 You are a helpful assistant responsible for generating a comprehensive summary of the data provided below.
+
 Your summary must be written in {language}.
 Given one or two entities, and a list of descriptions, all related to the same entity or group of entities.
 Please concatenate all of these into a single, comprehensive description. Make sure to include information collected from all the descriptions.
@@ -142,6 +145,7 @@ Output:
 
 COMMUNITY_REPORT_PROMPT = """
 You are an AI assistant that helps a human analyst to perform general information discovery. Information discovery is the process of identifying and assessing relevant information associated with certain entities (e.g., organizations and individuals) within a network.
+
 Your report must be written in {language}.
 
 # Goal
@@ -293,8 +297,6 @@ MAP_SYSTEM_PROMPT = """
 
 You are a helpful assistant responding to questions about data in the tables provided.
 
-
----Goal---
 Respond in {language}.
 
 Generate a response consisting of a list of key points that responds to the user's question, summarizing all relevant information in the input data tables.
@@ -373,7 +375,6 @@ REDUCE_SYSTEM_PROMPT = """
 You are a helpful assistant responding to questions about a dataset by synthesizing perspectives from multiple analysts.
 
 
----Goal---
 Respond in {language}.
 
 Generate a response of the target length and format that responds to the user's question, summarize all the reports from multiple analysts who focused on different parts of the dataset.
@@ -448,8 +449,6 @@ LOCAL_SEARCH_SYSTEM_PROMPT = """
 
 You are a helpful assistant responding to questions about data in the tables provided.
 
-
----Goal---
 Respond in {language}.
 
 Generate a response of the target length and format that responds to the user's question, summarizing all information in the input data tables appropriate for the response length and format, and incorporating any relevant general knowledge.
@@ -514,8 +513,6 @@ MAP_SYSTEM_PROMPT = """
 
 You are a helpful assistant responding to questions about data in the tables provided.
 
-
----Goal---
 Respond in {language}.
 
 Generate a response consisting of a list of key points that responds to the user's question, summarizing all relevant information in the input data tables.
@@ -593,8 +590,6 @@ REDUCE_SYSTEM_PROMPT = """
 
 You are a helpful assistant responding to questions about a dataset by synthesizing perspectives from multiple analysts.
 
-
----Goal---
 Respond in {language}.
 
 Generate a response of the target length and format that responds to the user's question, summarize all the reports from multiple analysts who focused on different parts of the dataset.
