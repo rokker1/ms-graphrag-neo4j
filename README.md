@@ -46,15 +46,13 @@ pip install -e .
 
 ```python
 import os
+from dotenv import load_dotenv
 
 from ms_graphrag_neo4j import MsGraphRAG
 from neo4j import GraphDatabase
 
-# Set your environment variables
-os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
-os.environ["NEO4J_URI"] = "bolt://localhost:7687"
-os.environ["NEO4J_USERNAME"] = "neo4j"
-os.environ["NEO4J_PASSWORD"] = "password"
+# Load credentials from a `.env` file
+load_dotenv()
 
 # Connect to Neo4j
 driver = GraphDatabase.driver(
@@ -63,15 +61,26 @@ driver = GraphDatabase.driver(
 )
 
 # Initialize MsGraphRAG
-ms_graph = MsGraphRAG(driver=driver, model='gpt-4o')
+ms_graph = MsGraphRAG(driver=driver)
 
 # Define example texts and entity types
 example_texts = [
-    "Tomaz works for Neo4j",
-    "Tomaz lives in Grosuplje", 
-    "Tomaz went to school in Grosuplje"
+    "Филипп Иванов Кашин арендует участки возле села Райбуже",
+    "Сын Фёдор служит старшим механиком на заводе",
+    "Алёшка женился на Варваре из бедной семьи",
 ]
-allowed_entities = ["Person", "Organization", "Location"]
+allowed_entities = [
+    "Person",
+    "Location",
+    "Item",
+    "Property",
+    "Meaning",
+    "Thought",
+    "Object",
+    "Subject",
+    "Event",
+    "WorkOfArt",
+]
 
 # Extract entities and relationships
 result = ms_graph.extract_nodes_and_rels(example_texts, allowed_entities)
@@ -87,6 +96,17 @@ print(result)
 
 # Close the connection
 ms_graph.close()
+```
+
+Create a `.env` file with the required credentials, for example:
+
+```bash
+OPENAI_BASE_URL=http://your-openai-endpoint/v1
+OPENAI_API_KEY=your_openai_key
+CHAT_MODEL_NAME=qwen2:72b
+NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_password
 ```
 
 ## How It Works
