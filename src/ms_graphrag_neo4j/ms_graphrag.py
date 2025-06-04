@@ -40,14 +40,18 @@ class MsGraphRAG:
     from ms_graphrag_neo4j import MsGraphRAG
     import os
 
-    os.environ["OPENAI_API_KEY"]= "sk-proj-"
-    os.environ["NEO4J_URI"]="bolt://localhost:7687"
-    os.environ["NEO4J_USERNAME"]="neo4j"
-    os.environ["NEO4J_PASSWORD"]="password"
+    os.environ["OPENAI_BASE_URL"] = "http://87.242.104.103:1234/v1"
+    os.environ["OPENAI_API_KEY"] = "some_key"
+    os.environ["NEO4J_URI"] = "neo4j+s://367ae45f.databases.neo4j.io"
+    os.environ["NEO4J_USERNAME"] = "neo4j"
+    os.environ["NEO4J_PASSWORD"] = "jgkvFCzzLlWTSq82kXc7-Vdl9wECVEJ-nxPD9DDF5F4"
 
     from neo4j import GraphDatabase
-    driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]))
-    ms_graph = MsGraphRAG(driver=driver, model='gpt-4o')
+    driver = GraphDatabase.driver(
+        os.environ["NEO4J_URI"],
+        auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
+    )
+    ms_graph = MsGraphRAG(driver=driver, model="qwen2:72b")
 
     example_texts = ["Tomaz works for Neo4j", "Tomaz lives in Grosuplje", "Tomaz went to school in Grosuplje"]
     allowed_entities = ["Person", "Organization", "Location"]
@@ -66,7 +70,7 @@ class MsGraphRAG:
     def __init__(
         self,
         driver: Driver,
-        model: str = "gpt-4o",
+        model: str = "qwen2:72b",
         database: str = "neo4j",
         max_workers: int = 10,
         create_constraints: bool = True,
@@ -76,7 +80,7 @@ class MsGraphRAG:
 
         Args:
             driver (Driver): Neo4j driver instance
-            model (str, optional): The language model to use. Defaults to "gpt-4o".
+            model (str, optional): The language model to use. Defaults to "qwen2:72b".
             database (str, optional): Neo4j database name. Defaults to "neo4j".
             max_workers (int, optional): Maximum number of concurrent workers. Defaults to 10.
             create_constraints (bool, optional): Whether to create database constraints. Defaults to True.
@@ -90,7 +94,10 @@ class MsGraphRAG:
         self.model = model
         self.max_workers = max_workers
         self._database = database
-        self._openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        self._openai_client = AsyncOpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            base_url=os.environ.get("OPENAI_BASE_URL"),
+        )
         # Test for APOC
         try:
             self.query("CALL apoc.help('test')")
@@ -434,7 +441,7 @@ class MsGraphRAG:
             result = session.run(Query(text=query, timeout=self.timeout), params)
             return [r.data() for r in result]
 
-    async def achat(self, messages, model="gpt-4o", temperature=0, config={}):
+    async def achat(self, messages, model="qwen2:72b", temperature=0, config={}):
         response = await self._openai_client.chat.completions.create(
             model=model,
             temperature=temperature,

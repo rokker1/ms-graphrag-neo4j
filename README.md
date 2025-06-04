@@ -51,10 +51,11 @@ from ms_graphrag_neo4j import MsGraphRAG
 from neo4j import GraphDatabase
 
 # Set your environment variables
-os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
-os.environ["NEO4J_URI"] = "bolt://localhost:7687"
+os.environ["OPENAI_BASE_URL"] = "http://87.242.104.103:1234/v1"
+os.environ["OPENAI_API_KEY"] = "some_key"
+os.environ["NEO4J_URI"] = "neo4j+s://367ae45f.databases.neo4j.io"
 os.environ["NEO4J_USERNAME"] = "neo4j"
-os.environ["NEO4J_PASSWORD"] = "password"
+os.environ["NEO4J_PASSWORD"] = "jgkvFCzzLlWTSq82kXc7-Vdl9wECVEJ-nxPD9DDF5F4"
 
 # Connect to Neo4j
 driver = GraphDatabase.driver(
@@ -63,7 +64,7 @@ driver = GraphDatabase.driver(
 )
 
 # Initialize MsGraphRAG
-ms_graph = MsGraphRAG(driver=driver, model='gpt-4o')
+ms_graph = MsGraphRAG(driver=driver, model="qwen2:72b")
 
 # Define example texts and entity types
 example_texts = [
